@@ -1,6 +1,7 @@
 package com.formacionbdi.springboot.app.item.controllers;
 
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -18,6 +19,7 @@ import com.formacionbdi.springboot.app.item.models.Producto;
 import com.formacionbdi.springboot.app.item.models.service.ItemService;
 
 import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
+import io.github.resilience4j.timelimiter.annotation.TimeLimiter;
 
 @RestController
 public class ItemController {
@@ -53,6 +55,22 @@ public class ItemController {
 		return itemService.findById(id, cantidad);
 	}
 	
+	// Devuelve una llamada asincronica, una llamada a futuro, maneja todo lo que es TIMEOUT(una clase de java 8)
+	// No contabiliza el numero de peticiones, solo lanza el timeout, y no entra al corto circuito.
+	@TimeLimiter(name = "items", fallbackMethod = "metodoAlternativo2")
+	@GetMapping("/ver3/{id}/cantidad/{cantidad}")
+	public CompletableFuture<Item> detalle3(@PathVariable Long id, @PathVariable Integer cantidad) {
+		return CompletableFuture.supplyAsync(() -> itemService.findById(id, cantidad));
+	}
+	
+	//Se pueden combinar
+	@CircuitBreaker(name = "items", fallbackMethod = "metodoAlternativo2")
+	@TimeLimiter(name = "items")
+	@GetMapping("/ver4/{id}/cantidad/{cantidad}")
+	public CompletableFuture<Item> detalle4(@PathVariable Long id, @PathVariable Integer cantidad) {
+		return CompletableFuture.supplyAsync(() -> itemService.findById(id, cantidad));
+	}
+	
 	public Item metodoAlternativo(Long id, Integer cantidad, Throwable e) {
 		logger.info(e.getMessage());
 		Item item = new Item();
@@ -64,6 +82,19 @@ public class ItemController {
 		producto.setPrecio(500.00);
 		item.setProducto(producto);
 		return item;
+	}
+	
+	public CompletableFuture<Item> metodoAlternativo2(Long id, Integer cantidad, Throwable e) {
+		logger.info(e.getMessage());
+		Item item = new Item();
+		Producto producto = new Producto();
+		
+		item.setCantidad(cantidad);
+		producto.setId(id);
+		producto.setNombre("Camara Sony");
+		producto.setPrecio(500.00);
+		item.setProducto(producto);
+		return CompletableFuture.supplyAsync(() ->  item);
 	}
 
 }

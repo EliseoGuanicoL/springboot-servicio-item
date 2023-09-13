@@ -16,7 +16,7 @@ resilience4j:
     configs:
       defecto:
         #timeout tiene prioridad sobre la Llamada lenta cuando tiene el mismo valor, e invoca camino alternativo
-        timeout-duration: 6s
+        timeout-duration: 2s
     instances:
       items:
         base-config: defecto
